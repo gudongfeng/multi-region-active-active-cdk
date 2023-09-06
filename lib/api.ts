@@ -1,14 +1,14 @@
-import {AwsIntegration, Cors, MockIntegration, PassthroughBehavior, RestApi} from "aws-cdk-lib/aws-apigateway";
-import {Effect, Policy, PolicyStatement, Role, ServicePrincipal} from "aws-cdk-lib/aws-iam";
-import {Construct} from "constructs";
-import {ITable} from "aws-cdk-lib/aws-dynamodb";
+import { AwsIntegration, Cors, MockIntegration, PassthroughBehavior, RestApi } from "aws-cdk-lib/aws-apigateway";
+import { Effect, Policy, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { Construct } from "constructs";
+import { ITable } from "aws-cdk-lib/aws-dynamodb";
 
 interface CreateRestApiProps {
     table: ITable;
     region: string;
 }
 
-const METHOD_OPTIONS = {methodResponses: [{statusCode: '200'}, {statusCode: '400'}, {statusCode: '500'}]};
+const METHOD_OPTIONS = { methodResponses: [{ statusCode: '200' }, { statusCode: '400' }, { statusCode: '500' }] };
 
 function createPolicy(scope: Construct, table: ITable, operation: "GetItem" | "PutItem") {
     const policy = new Policy(scope, `${operation}Policy`, {
@@ -27,7 +27,7 @@ function createPolicy(scope: Construct, table: ITable, operation: "GetItem" | "P
     return role;
 }
 
-export function createRestApi(scope: Construct, {table, region}: CreateRestApiProps): RestApi {
+export function createRestApi(scope: Construct, { table, region }: CreateRestApiProps): RestApi {
 
     const errorResponses = [
         {
@@ -114,6 +114,7 @@ export function createRestApi(scope: Construct, {table, region}: CreateRestApiPr
     const api = new RestApi(scope, "Api", {
         restApiName: "GlobalApplicationApi",
         defaultCorsPreflightOptions: {
+            statusCode: 200,
             allowOrigins: Cors.ALL_ORIGINS,
         },
         deployOptions: {
@@ -123,7 +124,7 @@ export function createRestApi(scope: Construct, {table, region}: CreateRestApiPr
         },
     });
 
-    const {root} = api;
+    const { root } = api;
 
     const allResources = root.addResource('data');
     allResources.addMethod('POST', createIntegration, METHOD_OPTIONS);
@@ -140,7 +141,7 @@ export function addHealthCheckEndpoint(api: RestApi) {
         ],
         passthroughBehavior: PassthroughBehavior.NEVER,
         requestTemplates: {
-            'application/json': JSON.stringify({statusCode: 200}),
+            'application/json': JSON.stringify({ statusCode: 200 }),
         },
     });
 

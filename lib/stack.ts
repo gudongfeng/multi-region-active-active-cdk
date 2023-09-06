@@ -1,7 +1,7 @@
-import {Fn, Stack, StackProps} from 'aws-cdk-lib';
-import {Construct} from 'constructs';
-import {AttributeType, BillingMode, Table} from "aws-cdk-lib/aws-dynamodb";
-import {DomainName, RestApi, SecurityPolicy} from "aws-cdk-lib/aws-apigateway";
+import { Fn, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
+import { DomainName, RestApi, SecurityPolicy } from "aws-cdk-lib/aws-apigateway";
 import {
     ARecord,
     CfnHealthCheck,
@@ -10,20 +10,20 @@ import {
     HostedZone,
     RecordTarget
 } from "aws-cdk-lib/aws-route53";
-import {DnsValidatedCertificate} from "aws-cdk-lib/aws-certificatemanager";
-import {ApiGatewayDomain} from "aws-cdk-lib/aws-route53-targets";
-import {addHealthCheckEndpoint, createRestApi} from "./api";
+import { DnsValidatedCertificate } from "aws-cdk-lib/aws-certificatemanager";
+import { ApiGatewayDomain } from "aws-cdk-lib/aws-route53-targets";
+import { addHealthCheckEndpoint, createRestApi } from "./api";
 
 // Regions are limited because of the APIGW Health Check: https://docs.aws.amazon.com/Route53/latest/APIReference/API_HealthCheckConfig.html
 // I'm not sure if the documentation is outdated, because it worked for eu-central-1 in some tests
 type REGION = 'us-east-1' | 'us-west-1' | 'us-west-2' | 'eu-west-1' | 'ap-southeast-1' | 'ap-southeast-2' | 'ap-northeast-1' | 'sa-east-1';
 
-const MAIN_REGION: REGION = 'us-east-1';
+const MAIN_REGION: REGION = 'us-west-2';
 // Add all the regions that you want DynamoDB to replicate to, but note that each replication makes the deployment take longer.
-const SECONDARY_REGIONS: REGION[] = ['eu-west-1', 'ap-southeast-2'];
+const SECONDARY_REGIONS: REGION[] = ['eu-west-1', 'us-east-1'];
 
 export class MultiApp extends Stack {
-    constructor(scope: Construct, id: string, props: StackProps & {hostedZoneId: string, domainName: string}) {
+    constructor(scope: Construct, id: string, props: StackProps & { hostedZoneId: string, domainName: string }) {
         super(scope, id, props);
 
         if (!props.env?.region) {
@@ -36,7 +36,7 @@ export class MultiApp extends Stack {
             throw Error('Could not resolve domainName. Please pass it with the DOMAIN_NAME environment variable.');
         }
 
-        const {hostedZoneId, domainName} = props;
+        const { hostedZoneId, domainName } = props;
         const region: REGION = props.env.region as REGION;
 
         const table = this.createTable({
@@ -45,13 +45,13 @@ export class MultiApp extends Stack {
             replicationRegions: SECONDARY_REGIONS,
         });
 
-        const restApi = createRestApi(this, {table, region});
+        const restApi = createRestApi(this, { table, region });
         addHealthCheckEndpoint(restApi);
 
-        this.addApiGateWayDomainName({domainName, restApi, hostedZoneId, region});
+        this.addApiGateWayDomainName({ domainName, restApi, hostedZoneId, region });
     }
 
-    private createTable({tableName, replicationRegions, region}: CreateTableProps) {
+    private createTable({ tableName, replicationRegions, region }: CreateTableProps) {
         if (region === MAIN_REGION) {
             return new Table(this, "Table", {
                 tableName,
@@ -61,13 +61,14 @@ export class MultiApp extends Stack {
                     type: AttributeType.STRING,
                 },
                 replicationRegions,
+                removalPolicy: RemovalPolicy.DESTROY
             });
         } else {
             return Table.fromTableName(this, "Table", tableName);
         }
     }
 
-    private addApiGateWayDomainName({domainName, restApi, hostedZoneId, region}: AddApiGateWayDomainNameProps) {
+    private addApiGateWayDomainName({ domainName, restApi, hostedZoneId, region }: AddApiGateWayDomainNameProps) {
         const hostedZone = HostedZone.fromHostedZoneAttributes(this, "HostedZone", {
             hostedZoneId,
             zoneName: domainName
